@@ -6,6 +6,15 @@ const ctx = C.makeContext(days);
 const F = C.FORECASTERS;
 const $ = (id) => document.getElementById(id);
 const state = { price: "P0", load: "L1", bound: "conformal", alpha: 0.01, gas: 2.5, day: null };
+// shareable state: #price=P1&load=L0&bound=gaussian&alpha=0.05&gas=3
+for (const [k, v] of new URLSearchParams(location.hash.slice(1))) {
+  if (k === "price" && F.price[v]) state.price = v;
+  if (k === "load" && F.load[v]) state.load = v;
+  if (k === "bound" && ["conformal", "gaussian"].includes(v)) state.bound = v;
+  if (k === "alpha" && ["0.01", "0.02", "0.05"].includes(v)) state.alpha = Number(v);
+  if (k === "gas" && Number(v) >= 1 && Number(v) <= 5) state.gas = Number(v);
+}
+$("sel-bound").value = state.bound; $("sel-alpha").value = String(state.alpha); $("gas").value = String(state.gas);
 
 // ---------- formatting ----------
 const money = (v, sign = false) => {
@@ -77,7 +86,7 @@ function render() {
   const boundName = state.bound === "conformal" ? "split-conformal bound" : "Gaussian bound";
   const chName = isChamp ? "Champion" : [state.price !== "P0" ? pm.name : null, state.load !== "L0" ? lm.name : null, state.bound !== "conformal" ? "Gaussian load bound" : null].filter(Boolean).join(" + ");
 
-  $("crumb-model").textContent = isChamp ? "Champion" : `${state.price} + ${state.load}`;
+  $("crumb-model").textContent = isChamp ? "Champion" : `${state.price} + ${state.load}${state.bound === "gaussian" ? " + Gaussian bound" : ""}`;
   $("title").textContent = isChamp ? "Champion replay" : `${chName} vs champion`;
   $("meta").innerHTML = [`Kilby-class site (illustrative 12 × 225 MW)`, `LZ_WEST`, `Backtest ${fdate(first)} – ${fdate(lastD, true)}`, `${n} settled days`, `Decision at noon D-1`, `Marginal cost $${C.marginalCost(pl).toFixed(1)}/MWh`].map((s) => `<span>${s}</span>`).join("");
   $("gas-val").textContent = "$" + state.gas.toFixed(2);
