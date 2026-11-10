@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Eval Gate · Energy Intelligence · Joulent</title>
+<link rel="icon" href="assets/joulent-monogram.svg" type="image/svg+xml">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<link rel="stylesheet" href="assets/app.css">
+</head>
+<body>
+<nav class="topbar">
+  <div class="tb-left">
+    <a class="brand" href="#" aria-label="Joulent"><img src="assets/joulent-logo-neg.svg" alt="Joulent"></a>
+    <span class="product">Energy Intelligence</span>
+    <ul class="tabs">
+      <li><a href="#">Overview</a></li>
+      <li><a href="#">Forecasts</a></li>
+      <li><a href="#">Backtests</a></li>
+      <li class="on"><a href="#">Eval Gate</a></li>
+      <li><a href="#">Data Quality</a></li>
+      <li><a href="#">Agents</a></li>
+    </ul>
+  </div>
+  <div class="tb-right">
+    <span class="site"><i class="sq"></i>Kilby-class site · LZ_WEST</span>
+    <a class="btn" href="#method">Method</a>
+  </div>
+</nav>
+
+<header class="band">
+  <div class="wrap">
+    <div class="crumbs label-dark"><span>Eval Gate</span><span>Day-ahead plan</span><span id="crumb-model">Challenger</span></div>
+    <div class="rule"></div>
+    <h1 id="title">Challenger vs champion</h1>
+    <div class="meta" id="meta"></div>
+    <div class="controls">
+      <label><span class="label-dark">Price model</span><select id="sel-price"></select></label>
+      <label><span class="label-dark">Load model</span><select id="sel-load"></select></label>
+      <label><span class="label-dark">Load bound</span><select id="sel-bound"><option value="conformal">Split conformal</option><option value="gaussian">Gaussian</option></select></label>
+      <label><span class="label-dark">Reliability target</span><select id="sel-alpha"><option value="0.01">99%</option><option value="0.02">98%</option><option value="0.05">95%</option></select></label>
+      <label class="gas"><span class="label-dark">Gas price <b id="gas-val"></b></span><input type="range" id="gas" min="1" max="5" step="0.25" value="2.5"></label>
+      <span class="ctl-note">Champion: P0 + L0, split conformal. Changes replay all 230 days in the browser.</span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <section class="verdict-sec">
+    <div class="sechead"><span class="label">Gate decision</span></div>
+    <div class="verdict mode">
+      <div class="v-main">
+        <div class="v-word" id="v-word">HOLD</div>
+        <div class="v-text">
+          <div class="v-head" id="v-head"></div>
+          <div class="v-sub" id="v-sub"></div>
+        </div>
+      </div>
+      <div class="checks" id="checks"></div>
+    </div>
+    <div class="kpis" id="kpis"></div>
+  </section>
+
+  <section>
+    <div class="sechead"><span class="label">Accuracy vs dollars</span><div class="desc">Every candidate replayed through the same plan: battery schedule, turbine commitment, settlement at real-time prices.</div></div>
+    <table class="grid" id="tbl"></table>
+    <p class="note" id="tbl-note"></p>
+  </section>
+
+  <section class="two">
+    <div>
+      <div class="sechead"><span class="label">Cumulative regret vs perfect foresight</span><div class="desc" id="cum-desc">Same decision process, run with the realized prices and load.</div></div>
+      <div class="chart"><canvas id="c-cum"></canvas></div>
+    </div>
+    <div>
+      <div class="sechead"><span class="label">Where the regret comes from</span><div class="desc">Hourly regret by realized LZ_WEST real-time price. Negative hours are paid for elsewhere in the same day.</div></div>
+      <div class="chart"><canvas id="c-reg"></canvas></div>
+    </div>
+  </section>
+
+  <section class="two">
+    <div>
+      <div class="sechead"><span class="label">Which forecast to improve next</span><div class="desc">Shapley split of the challenger's regret between its price and load forecasts (swap each for perfect foresight).</div></div>
+      <div class="voi" id="voi"></div>
+    </div>
+    <div>
+      <div class="sechead"><span class="label">Reliability margin</span><div class="desc">Upper load bound from each model's last 21 days of out-of-sample errors.</div></div>
+      <div class="chart short"><canvas id="c-cov"></canvas></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sechead day-head">
+      <div><span class="label">Day drill-down</span><div class="desc" id="day-desc"></div></div>
+      <label class="daysel"><span class="label-dark">Operating day</span><select id="sel-day"></select></label>
+    </div>
+    <div class="two inner">
+      <div class="chart"><canvas id="c-day-p"></canvas></div>
+      <div class="chart"><canvas id="c-day-u"></canvas></div>
+    </div>
+  </section>
+
+  <section id="method" class="method">
+    <div class="sechead"><span class="label">Method</span></div>
+    <div class="cols">
+      <div class="mode"><h3>Decision</h3><ul>
+        <li>Noon on D-1, after the ERCOT day-ahead market clears. Telemetry and RT prices known through HE11.</li>
+        <li>Battery DP plans 24 h of charge/discharge on the price forecast (300 MW / 1,200 MWh, 87% round trip).</li>
+        <li>Commitment DP picks turbine blocks online per hour: start and no-load costs, scenario-expected dispatch cost.</li></ul></div>
+      <div class="mode"><h3>Uncertainty</h3><ul>
+        <li>Scenarios: the model's own joint (price, load) errors from the previous 21 settled days, same hour.</li>
+        <li>Reliability floor: blocks + 400 MW import must cover the upper load bound at the chosen level.</li>
+        <li>Settlement cancels charging, then discharges the battery, before counting unserved load.</li></ul></div>
+      <div class="mode"><h3>Gate</h3><ul>
+        <li>Regret = settled cost minus the same process with perfect foresight.</li>
+        <li>Daily regret differences, 7-day moving-block bootstrap (2,000 resamples), 90% interval.</li>
+        <li>BLOCK on any reliability regression or a significant cost increase; PROMOTE only if significantly cheaper.</li></ul></div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <img src="assets/joulent-logo-neg.svg" alt="Joulent">
+  <div>Unofficial concept demo by Mohith Gajjela. Not affiliated with Joulent. Real ERCOT LZ_WEST prices (2026) and Open-Meteo West Texas weather; synthetic campus load and illustrative plant parameters.</div>
+</footer>
+
+<script src="data/bundle.js"></script>
+<script type="module" src="src/app.js"></script>
+</body>
+</html>
